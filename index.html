@@ -4,87 +4,114 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Magyar Termék Vásárlói Érzet-Index</title>
-    <script src="https://tailwindcss.com"></script>
     <style>
-        .sticky-header { position: sticky; top: 0; z-index: 50; }
+        /* Beágyazott stílusok, hogy INTERNET NÉLKÜL IS tökéletes és színes legyen a telefonon */
+        * { box-sizing: border-box; font-family: sans-serif; }
+        body { bg-color: #f3f4f6; background: #f3f4f6; color: #1f2937; margin: 0; padding-bottom: 40px; }
+        
+        .sticky-header { 
+            position: sticky; top: 0; z-index: 50; background: white; 
+            padding: 15px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            border-bottom: 5px solid #d1d5db; transition: all 0.3s;
+        }
+        .main-content { max-width: 450px; margin: 20px auto; padding: 0 15px; }
+        .info-text { text-align: center; font-size: 12px; color: #6b7280; font-style: italic; margin-bottom: 20px; }
+        
+        /* Bolt kártyák */
+        .store-card { 
+            background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; transition: all 0.3s;
+        }
+        .store-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .store-name { font-size: 18px; font-weight: bold; color: #111827; }
+        .store-val { font-size: 28px; font-weight: 900; }
+        
+        /* Gombok rácsa */
+        .grid-buttons { display: grid; grid-template-cols: repeat(4, 1fr); display: flex; gap: 8px; }
+        
+        /* Egyedi kiskocka gombok */
+        .btn { 
+            flex: 1; border: none; padding: 12px 5px; rounded-md: 6px; border-radius: 6px;
+            font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.1s; text-align: center;
+        }
+        .btn-down { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+        .btn-down:active { background: #dc2626; color: white; }
+        .btn-up { background: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
+        .btn-up:active { background: #16a34a; color: white; }
+        
+        /* Dinamikus színek az állapothoz */
+        .red-mode { border-color: #ef4444 !important; color: #dc2626 !important; }
+        .red-bg { background-color: #fef2f2 !important; }
+        .green-mode { border-color: #22c55e !important; color: #16a34a !important; }
+        
+        .total-title { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #9ca3af; letter-spacing: 1px; margin: 0; }
+        .total-num { font-size: 50px; font-weight: 900; margin: 5px 0; }
+        .total-sub { font-size: 12px; font-weight: bold; margin: 0; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans min-h-screen pb-10">
+<body>
 
-    <!-- ÁLLANDÓAN LÁTHATÓ FŐ MUTATÓ -->
-    <div id="main-header" class="sticky-header bg-white shadow-md p-4 transition-colors duration-300 border-b-4 border-gray-300">
-        <div class="max-w-md mx-auto text-center">
-            <h1 class="text-xs font-bold uppercase tracking-wider text-gray-400">Multik Összesített Magyar Termék Aránya (Vásárlói Érzet)</h1>
-            <div id="total-percentage" class="text-6xl font-black my-1">--%</div>
-            <p id="total-status" class="text-xs font-semibold">Adatok számítása...</p>
-        </div>
+    <!-- FIX FŐ MUTATÓ -->
+    <div id="main-header" class="sticky-header">
+        <h1 class="total-title">Multik Összesített Magyar Termék Aránya</h1>
+        <div id="total-percentage" class="total-num">--%</div>
+        <p id="total-status" class="total-sub">Számítás...</p>
     </div>
 
-    <!-- FŐ TARTALOM -->
-    <main class="max-w-md mx-auto px-4 mt-6">
-        <p class="text-xs text-center text-gray-500 mb-6 italic">
-            Tippeld meg tapasztalatod alapján, hány % volt a magyar termék! Ha az átlag 50% alatti, a bolt pirosat kap.
+    <!-- TARTALOM -->
+    <main class="main-content">
+        <p class="info-text">
+            Érintsd meg a kiskockákat a százalék módosításához!<br>
+            A 20% és 60% LEFELÉ viszi, a 40% és 80% FELFELÉ viszi az értéket.
         </p>
 
-        <!-- BOLTOK LISTÁJA -->
-        <div id="stores-container" class="space-y-4">
-            <!-- Dinamikus tartalom -->
-        </div>
+        <!-- BOLTOK -->
+        <div id="stores-container"></div>
     </main>
 
     <script>
-        // Kezdő adatok (Szimulált korábbi szavazatok: összesített % érték, szavazók száma)
+        // Kiinduló bolti százalékok (alapértelmezetten 50%-ról indulnak)
         const storesData = [
-            { id: 'lidl', name: 'Lidl', totalPercentSum: 1680, voteCount: 42 }, // ~40%
-            { id: 'aldi', name: 'Aldi', totalPercentSum: 2340, voteCount: 39 }, // ~60%
-            { id: 'spar', name: 'Spar / Interspar', totalPercentSum: 2850, voteCount: 45 }, // ~63%
-            { id: 'tesco', name: 'Tesco', totalPercentSum: 1350, voteCount: 45 }, // ~30%
-            { id: 'penny', name: 'Penny', totalPercentSum: 1800, voteCount: 40 }  // ~45%
+            { id: 'lidl', name: 'Lidl', currentPercent: 50 },
+            { id: 'aldi', name: 'Aldi', currentPercent: 50 },
+            { id: 'spar', name: 'Spar / Interspar', currentPercent: 50 },
+            { id: 'tesco', name: 'Tesco', currentPercent: 50 },
+            { id: 'penny', name: 'Penny', currentPercent: 50 }
         ];
 
         function updateApp() {
-            let globalPercentSum = 0;
-            let globalVoteCount = 0;
             const container = document.getElementById('stores-container');
             container.innerHTML = '';
+            let totalSum = 0;
 
             storesData.forEach(store => {
-                // Bolt átlagának kiszámítása
-                const storeAverage = store.voteCount > 0 ? Math.round(store.totalPercentSum / store.voteCount) : 0;
-                
-                globalPercentSum += store.totalPercentSum;
-                globalVoteCount += store.voteCount;
+                totalSum += store.currentPercent;
 
-                // Szabály: 50% alatt szigorúan piros a teljesítmény
-                const isRed = storeAverage < 50;
-                const percentageColor = isRed ? 'text-red-600' : 'text-green-600';
-                const cardBorder = isRed ? 'border-red-200 bg-red-50/30' : 'border-gray-200 bg-white';
+                const isRed = store.currentPercent < 50;
+                const cardClass = isRed ? 'store-card red-bg red-mode' : 'store-card';
+                const valClass = isRed ? 'store-val red-mode' : 'store-val green-mode';
 
                 const card = document.createElement('div');
-                card.className = `rounded-xl shadow-sm p-4 border transition-all ${cardBorder}`;
+                card.className = cardClass;
                 card.innerHTML = `
-                    <div class="flex justify-between items-center mb-3">
-                        <span class="text-lg font-bold text-gray-900">${store.name}</span>
-                        <div class="text-right">
-                            <span class="text-2xl font-black ${percentageColor}">${storeAverage}%</span>
-                            <div class="text-[10px] text-gray-400">${store.voteCount} szavazat alapján</div>
-                        </div>
+                    <div class="store-header">
+                        <span class="store-name">${store.name}</span>
+                        <span class="${valClass}">${store.currentPercent}%</span>
                     </div>
                     
-                    <div class="text-xs font-semibold text-gray-500 mb-2">Hány % magyar terméket láttál?</div>
-                    <!-- Tipp gombok -->
-                    <div class="grid grid-cols-4 gap-1.5">
-                        <button onclick="addEstimate('${store.id}', 20)" class="bg-gray-100 hover:bg-red-500 hover:text-white transition py-1.5 px-1 rounded text-xs font-bold text-gray-700">20%</button>
-                        <button onclick="addEstimate('${store.id}', 40)" class="bg-gray-100 hover:bg-orange-500 hover:text-white transition py-1.5 px-1 rounded text-xs font-bold text-gray-700">40%</button>
-                        <button onclick="addEstimate('${store.id}', 60)" class="bg-gray-100 hover:bg-emerald-500 hover:text-white transition py-1.5 px-1 rounded text-xs font-bold text-gray-700">60%</button>
-                        <button onclick="addEstimate('${store.id}', 80)" class="bg-gray-100 hover:bg-green-600 hover:text-white transition py-1.5 px-1 rounded text-xs font-bold text-gray-700">80%</button>
+                    <!-- A 4 darab működő kiskocka -->
+                    <div class="grid-buttons">
+                        <button onclick="modifyPercent('${store.id}', -20)" class="btn btn-down">▼ 20%</button>
+                        <button onclick="modifyPercent('${store.id}', 40)" class="btn btn-up">▲ 40%</button>
+                        <button onclick="modifyPercent('${store.id}', -60)" class="btn btn-down">▼ 60%</button>
+                        <button onclick="modifyPercent('${store.id}', 80)" class="btn btn-up">▲ 80%</button>
                     </div>
                 `;
                 container.appendChild(card);
             });
 
-            // Országos összesített érzet-átlag kiszámítása
-            const globalAverage = globalVoteCount > 0 ? Math.round(globalPercentSum / globalVoteCount) : 0;
+            // Országos átlag számítása
+            const globalAverage = Math.round(totalSum / storesData.length);
             const headerElement = document.getElementById('main-header');
             const totalPctElement = document.getElementById('total-percentage');
             const totalStatusElement = document.getElementById('total-status');
@@ -92,29 +119,33 @@
             totalPctElement.innerText = globalAverage + '%';
 
             if (globalAverage >= 50) {
-                headerElement.className = "sticky-header bg-white shadow-md p-4 transition-colors duration-300 border-b-4 border-green-500";
-                totalPctElement.className = "text-6xl font-black my-1 text-green-600";
-                totalStatusElement.innerText = "A vásárlók szerint a polcok többségén magyar termék van.";
-                totalStatusElement.className = "text-xs font-bold text-green-600";
+                headerElement.style.borderBottomColor = "#22c55e";
+                totalPctElement.style.color = "#16a34a";
+                totalStatusElement.innerText = "A polcok többségén magyar termék van.";
+                totalStatusElement.style.color = "#16a34a";
             } else {
-                headerElement.className = "sticky-header bg-white shadow-md p-4 transition-colors duration-300 border-b-4 border-red-500";
-                totalPctElement.className = "text-6xl font-black my-1 text-red-600";
-                totalStatusElement.innerText = "Kritikus szint! A vásárlói érzet szerint dominál az import áru.";
-                totalStatusElement.className = "text-xs font-bold text-red-600";
+                headerElement.style.borderBottomColor = "#ef4444";
+                totalPctElement.style.color = "#dc2626";
+                totalStatusElement.innerText = "Kritikus szint! Dominál az import áru.";
+                totalStatusElement.style.color = "#dc2626";
             }
         }
 
-        // Új vásárlói becslés hozzáadása
-        function addEstimate(storeId, percent) {
+        // Itt van a kért tekergető/léptető logika!
+        function modifyPercent(storeId, amount) {
             const store = storesData.find(s => s.id === storeId);
             if (store) {
-                store.totalPercentSum += percent;
-                store.voteCount++;
+                store.currentPercent += amount;
+                
+                // Biztonsági korlátok: ne menjen 0 alá és 100 fölé
+                if (store.currentPercent > 100) store.currentPercent = 100;
+                if (store.currentPercent < 0) store.currentPercent = 0;
+                
                 updateApp();
             }
         }
 
-        // Kezdő futtatás
+        // Első indítás
         updateApp();
     </script>
 </body>
