@@ -1,0 +1,28 @@
+name: Generate APK
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - name: Install Cordova
+        run: npm install -g cordova
+      - name: Create App Project
+        run: |
+          cordova create myapp com.example.app "My First App"
+          rm -rf myapp/www/*
+          cp -r * myapp/www/ 2>/dev/null || true
+          cd myapp
+          cordova platform add android
+          cordova build android --device
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-android-app
+          path: myapp/platforms/android/app/build/outputs/apk/debug/app-debug.apk
